@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WorldStream — Live TV</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;overflow-x:hidden}
+:root{
+  --bg:#07090f;
+  --bg2:#0c1018;
+  --card:#0f1623;
+  --card2:#151e2e;
+  --border:#1a2535;
+  --border2:#1f2d42;
+  --accent:#00d4ff;
+  --cyan:#06b6d4;
+  --purple:#7c3aed;
+  --text:#e2e8f0;
+  --text2:#94a3b8;
+  --text3:#4b5e7a;
+  --live:#22c55e;
+  --red:#ef4444;
+  --gold:#f59e0b;
+}
+body{
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    linear-gradient(rgba(0,212,255,0.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,0.02) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;z-index:0;
+}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+
+/* HEADER */
+.hdr{
+  position:sticky;top:0;z-index:300;
+  background:rgba(7,9,15,0.96);
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  border-bottom:1px solid var(--border);
+}
+.hdr-inner{
+  max-width:1400px;margin:0 auto;
+  padding:0 16px;
+  height:58px;
+  display:flex;align-items:center;
+  justify-content:space-between;gap:12px;
+}
+.logo{display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:0}
+.logo-ic{
+  width:34px;height:34px;
+  background:linear-gradient(135deg,var(--accent),var(--purple));
+  border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;
+}
+.logo-tx{
+  font-size:1.2em;font-weight:800;
+  background:linear-gradient(90deg,var(--accent),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hdr-r{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+/* BUTTONS */
+.btn{
+  border:none;font-family:inherit;
+  font-weight:600;cursor:pointer;
+  display:inline-flex;align-items:center;
+  justify-content:center;gap:6px;
+  transition:all .18s;white-space:nowrap;
+  -webkit-appearance:none;
+}
+.btn:active{opacity:.8;transform:scale(.97)}
+.bp{
+  background:linear-gradient(135deg,var(--accent),var(--cyan));
+  color:#000;border-radius:9px;
+  padding:8px 16px;font-size:.85em;
+}
+.bp:hover{box-shadow:0 0 18px rgba(0,212,255,.35)}
+.bg{
+  background:transparent;
+  border:1px solid var(--border2);
+  color:var(--text2);border-radius:9px;
+  padding:8px 14px;font-size:.85em;
+}
+.bg:hover{border-color:var(--accent);color:var(--accent)}
+.bd{
+  background:linear-gradient(135deg,var(--red),#dc2626);
+  color:#fff;border-radius:8px;
+  padding:7px 12px;font-size:.82em;
+}
+.be{
+  background:linear-gradient(135deg,var(--purple),#6d28d9);
+  color:#fff;border-radius:8px;
+  padding:7px 12px;font-size:.82em;
+}
+.blo{
+  background:rgba(239,68,68,.1);
+  border:1px solid rgba(239,68,68,.3);
+  color:var(--red);border-radius:8px;
+  padding:6px 12px;font-size:.8em;
+}
+
+.upill{
+  display:flex;align-items:center;gap:6px;
+  background:var(--card2);
+  border:1px solid var(--border2);
+  border-radius:20px;
+  padding:5px 6px 5px 12px;
+  font-size:.78em;color:var(--text2);
+  max-width:260px;
+}
+.upill-email{
+  overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;flex:1;min-width:0;
+}
+.atag{
+  background:linear-gradient(135deg,var(--gold),#d97706);
+  color:#000;font-size:.68em;font-weight:800;
+  padding:2px 8px;border-radius:20px;flex-shrink:0;
+}
+
+/* MAIN */
+.main{max-width:1400px;margin:0 auto;padding:16px;position:relative;z-index:1}
+
+/* HERO */
+.hero{text-align:center;padding:32px 16px 24px}
+.hero h2{
+  font-size:clamp(1.5em,5vw,2.8em);
+  font-weight:800;line-height:1.2;
+  background:linear-gradient(135deg,var(--accent),var(--purple),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;margin-bottom:8px;
+}
+.hero p{color:var(--text3);font-size:.9em;margin-bottom:20px}
+.stats{display:flex;justify-content:center;gap:24px;flex-wrap:wrap}
+.stat{text-align:center}
+.snum{
+  font-size:1.8em;font-weight:800;
+  background:linear-gradient(135deg,var(--accent),var(--cyan));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.slbl{font-size:.72em;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-top:1px}
+
+/* TOOLBAR */
+.toolbar{
+  display:flex;align-items:center;
+  gap:10px;margin-bottom:20px;
+  flex-wrap:wrap;
+}
+.cats{
+  display:flex;gap:6px;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;
+  flex:1;min-width:0;
+  padding-bottom:2px;
+}
+.cats::-webkit-scrollbar{display:none}
+.cb{
+  padding:7px 14px;border-radius:18px;
+  border:1px solid var(--border2);
+  background:transparent;color:var(--text3);
+  font-size:.8em;font-weight:600;
+  cursor:pointer;transition:all .18s;
+  font-family:inherit;white-space:nowrap;
+  flex-shrink:0;
+}
+.cb:hover{border-color:var(--accent);color:var(--accent)}
+.cb.on{
+  background:linear-gradient(135deg,var(--accent),var(--cyan));
+  border-color:transparent;color:#000;
+  box-shadow:0 0 12px rgba(0,212,255,.25);
+}
+.add-btn-wrap{flex-shrink:0}
+
+/* GRID */
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:16px;
+}
+
+/* CARD */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+  cursor:pointer;transition:transform .22s,border-color .22s,box-shadow .22s;
+  position:relative;
+}
+.card:hover{
+  border-color:var(--accent);
+  transform:translateY(-3px);
+  box-shadow:0 10px 28px rgba(0,212,255,.1);
+}
+.thumb{
+  position:relative;width:100%;
+  padding-bottom:56.25%;
+  background:var(--bg2);overflow:hidden;
+}
+.thumb img{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+  transition:transform .3s;
+}
+.card:hover .thumb img{transform:scale(1.05)}
+.ov{
+  position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(7,9,15,.95) 0%,transparent 55%);
+  opacity:0;transition:opacity .22s;
+  display:flex;align-items:center;justify-content:center;
+}
+.card:hover .ov{opacity:1}
+.plic{
+  width:52px;height:52px;
+  background:linear-gradient(135deg,var(--accent),var(--cyan));
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;color:#000;
+  box-shadow:0 0 25px rgba(0,212,255,.5);
+}
+.bdg{
+  position:absolute;top:8px;left:8px;
+  padding:3px 10px;border-radius:18px;
+  font-size:.7em;font-weight:700;
+  display:flex;align-items:center;gap:4px;
+  z-index:2;backdrop-filter:blur(8px);
+}
+.bdg.live{background:rgba(34,197,94,.9);color:#fff;border:1px solid rgba(34,197,94,.4)}
+.bdg.offline{background:rgba(239,68,68,.88);color:#fff;border:1px solid rgba(239,68,68,.4)}
+.bdg.chk{background:rgba(245,158,11,.88);color:#fff;border:1px solid rgba(245,158,11,.4)}
+.ldot{width:6px;height:6px;background:#fff;border-radius:50%;animation:bk 1.4s infinite}
+@keyframes bk{0%,100%{opacity:1}50%{opacity:.1}}
+
+.cbody{padding:12px 14px 14px}
+.cname{
+  font-size:.95em;font-weight:700;color:var(--text);
+  margin-bottom:7px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ccat{
+  display:inline-flex;align-items:center;gap:3px;
+  background:rgba(124,58,237,.12);
+  border:1px solid rgba(124,58,237,.22);
+  color:var(--purple);
+  font-size:.7em;font-weight:600;
+  padding:3px 9px;border-radius:18px;margin-bottom:8px;
+}
+.cmeta{display:flex;flex-direction:column;gap:2px;margin-bottom:10px}
+.cmeta span{font-size:.76em;color:var(--text3)}
+.cmeta span b{color:var(--text2)}
+.cacts{display:flex;gap:7px}
+
+/* EMPTY */
+.empty{
+  grid-column:1/-1;text-align:center;
+  padding:70px 20px;color:var(--text3);
+}
+.ei{font-size:3em;margin-bottom:10px;opacity:.4}
+
+/* MODAL */
+.modal{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.87);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  z-index:600;
+  align-items:center;justify-content:center;
+  padding:16px;
+  overflow-y:auto;
+}
+.modal.open{display:flex}
+.mbox{
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  border-radius:18px;
+  width:100%;max-width:460px;
+  padding:24px;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);
+  margin:auto;
+}
+.mhdr{
+  display:flex;align-items:center;
+  justify-content:space-between;
+  margin-bottom:20px;
+}
+.mtitle{
+  font-size:1.15em;font-weight:700;
+  background:linear-gradient(90deg,var(--accent),var(--purple));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.mclose{
+  width:30px;height:30px;
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:7px;color:var(--text2);
+  cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .18s;
+}
+.mclose:hover{background:rgba(239,68,68,.2);border-color:var(--red);color:var(--red)}
+
+/* FIELD */
+.field{margin-bottom:14px}
+.field label{
+  display:block;font-size:.76em;font-weight:700;
+  color:var(--text2);margin-bottom:5px;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.field input,.field select,.field textarea{
+  width:100%;padding:10px 13px;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:9px;color:var(--text);
+  font-size:.88em;font-family:inherit;
+  transition:border-color .18s,box-shadow .18s;
+  -webkit-appearance:none;appearance:none;
+}
+.field select option{background:var(--bg2);color:var(--text)}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(0,212,255,.1);
+}
+.field input::placeholder,.field textarea::placeholder{color:var(--text3)}
+.field textarea{resize:vertical;min-height:65px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fbtns{display:flex;gap:8px;margin-top:18px}
+.fbtns .btn{flex:1;padding:11px}
+.aswitch{
+  text-align:center;margin-top:14px;
+  font-size:.83em;color:var(--text3);
+}
+.aswitch span{color:var(--accent);cursor:pointer;font-weight:600}
+
+/* STATUS MSG */
+.status-msg{
+  padding:10px 14px;border-radius:9px;
+  font-size:.83em;margin-bottom:12px;
+  display:none;
+}
+.status-msg.ok{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.3);color:#4ade80}
+.status-msg.err{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171}
+.status-msg.info{background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--accent)}
+
+/* PLAYER */
+.player{
+  display:none;position:fixed;inset:0;
+  background:#000;z-index:900;
+  flex-direction:column;
+}
+.player.open{display:flex}
+.ptop{
+  display:flex;align-items:center;
+  justify-content:space-between;
+  padding:12px 16px;
+  background:rgba(12,16,24,.97);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;gap:10px;
+}
+.pinfo{flex:1;min-width:0}
+.ptitle{
+  font-size:1em;font-weight:700;
+  color:var(--accent);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.psub{font-size:.76em;color:var(--text3);margin-top:2px}
+.pbody{display:flex;flex:1;overflow:hidden;min-height:0}
+.pmain{flex:1;display:flex;flex-direction:column;background:#000;overflow:hidden;min-width:0}
+.vwrap{
+  position:relative;width:100%;
+  flex-shrink:0;
+  padding-bottom:56.25%;background:#000;
+}
+.vwrap video{position:absolute;inset:0;width:100%;height:100%}
+.pmeta{
+  padding:14px 16px;
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+  overflow-y:auto;
+}
+.pmeta h3{color:var(--accent);font-size:.9em;margin-bottom:4px}
+.pmeta p{font-size:.78em;color:var(--text3);line-height:1.5}
+
+/* SIDEBAR */
+.psidebar{
+  width:280px;flex-shrink:0;
+  background:var(--bg2);
+  border-left:1px solid var(--border);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.shead{
+  padding:14px 14px 10px;
+  border-bottom:1px solid var(--border);
+  font-size:.8em;font-weight:700;
+  color:var(--text2);text-transform:uppercase;letter-spacing:.5px;
+}
+.rlist{
+  flex:1;overflow-y:auto;
+  padding:8px;display:flex;flex-direction:column;gap:6px;
+}
+.rcrd{
+  display:flex;background:var(--card);
+  border:1px solid var(--border);border-radius:9px;
+  overflow:hidden;cursor:pointer;transition:all .18s;
+}
+.rcrd:hover{border-color:var(--accent);background:var(--card2)}
+.rth{width:88px;height:55px;flex-shrink:0;overflow:hidden}
+.rth img{width:100%;height:100%;object-fit:cover}
+.rinf{
+  padding:7px 9px;
+  display:flex;flex-direction:column;
+  justify-content:center;min-width:0;
+}
+.rname{font-size:.78em;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcat{font-size:.7em;color:var(--text3);margin-top:2px}
+.norel{text-align:center;padding:24px 10px;color:var(--text3);font-size:.82em;line-height:1.6}
+
+/* TOAST */
+.tosts{
+  position:fixed;top:68px;right:14px;
+  z-index:9999;display:flex;
+  flex-direction:column;gap:6px;
+  pointer-events:none;max-width:300px;
+  width:calc(100vw - 28px);
+}
+.tst{
+  background:var(--card2);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:10px 16px;
+  font-size:.83em;color:var(--text);
+  box-shadow:0 6px 24px rgba(0,0,0,.5);
+  animation:tin .28s ease;
+  display:flex;align-items:center;gap:7px;
+  border-left:3px solid var(--accent);
+}
+.tst.err{border-left-color:var(--red)}
+.tst.ok{border-left-color:var(--live)}
+@keyframes tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* SKELETON */
+.ske{
+  background:linear-gradient(90deg,var(--card) 25%,var(--card2) 50%,var(--card) 75%);
+  background-size:200% 100%;
+  animation:sk 1.5s infinite;
+  border-radius:14px;height:260px;
+}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* === RESPONSIVE === */
+@media(max-width:1100px){
+  .psidebar{width:240px}
+}
+@media(max-width:860px){
+  .pbody{flex-direction:column}
+  .psidebar{
+    width:100%;border-left:none;
+    border-top:1px solid var(--border);
+    max-height:160px;flex-shrink:0;
+  }
+  .rlist{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:6px}
+  .rcrd{flex-direction:column;min-width:100px;max-width:100px;flex-shrink:0}
+  .rth{width:100%;height:60px}
+  .rinf{padding:5px 7px}
+  .pmeta{max-height:80px}
+}
+@media(max-width:600px){
+  .main{padding:10px}
+  .hdr-inner{padding:0 12px;height:52px}
+  .logo-tx{font-size:1.05em}
+  .logo-ic{width:30px;height:30px;font-size:15px}
+  .grid{
+    grid-template-columns:repeat(2,1fr);
+    gap:10px;
+  }
+  .hero{padding:20px 10px 16px}
+  .hero h2{font-size:1.4em}
+  .stats{gap:16px}
+  .snum{font-size:1.5em}
+  .toolbar{gap:8px;margin-bottom:14px}
+  .frow{grid-template-columns:1fr}
+  .mbox{padding:18px}
+  .ptop{padding:10px 12px}
+  .ptitle{font-size:.9em}
+  .upill{max-width:180px}
+  .upill-email{font-size:.75em}
+  .hdr-r .bg{display:none}
+  .hdr-r-mobile{display:flex !important}
+  .cacts{flex-direction:column}
+  .cacts .btn{width:100%}
+}
+@media(max-width:380px){
+  .grid{grid-template-columns:1fr}
+  .upill-email{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdr-inner">
+    <a class="logo" href="#">
+      <div class="logo-ic">📡</div>
+      <span class="logo-tx">WorldStream</span>
+    </a>
+    <div class="hdr-r" id="hdrR">
+      <div id="authBtns" style="display:flex;gap:6px">
+        <button class="btn bg" onclick="openM('lm')">Iniciar Sesión</button>
+        <button class="btn bp" onclick="openM('rm')">Crear Cuenta</button>
+      </div>
+      <div id="upill" class="upill" style="display:none">
+        <span class="upill-email" id="umail"></span>
+        <span id="atag" class="atag" style="display:none">⭐ ADMIN</span>
+        <button class="btn blo" onclick="doOut()">Salir</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="hero">
+    <h2>TV en Vivo de Todo el Mundo</h2>
+    <p>Miles de canales gratuitos — sin registro requerido</p>
+    <div class="stats">
+      <div class="stat"><div class="snum" id="tc">0</div><div class="slbl">Canales</div></div>
+      <div class="stat"><div class="snum" id="lc">—</div><div class="slbl">En Vivo</div></div>
+      <div class="stat"><div class="snum">6</div><div class="slbl">Categorías</div></div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="cats">
+      <button class="cb on" onclick="setC('all',this)">🌐 Todos</button>
+      <button class="cb" onclick="setC('Noticias',this)">📰 Noticias</button>
+      <button class="cb" onclick="setC('Deportes',this)">⚽ Deportes</button>
+      <button class="cb" onclick="setC('Música',this)">🎵 Música</button>
+      <button class="cb" onclick="setC('Entretenimiento',this)">🎬 Entretenimiento</button>
+      <button class="cb" onclick="setC('Películas',this)">🎥 Películas</button>
+      <button class="cb" onclick="setC('Infantil',this)">🧸 Infantil</button>
+    </div>
+    <div class="add-btn-wrap">
+      <button class="btn bp" onclick="openM('am')">＋ Agregar</button>
+    </div>
+  </div>
+
+  <div class="grid" id="grid">
+    <div class="ske"></div><div class="ske"></div>
+    <div class="ske"></div><div class="ske"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="modal" id="lm">
+  <div class="mbox">
+    <div class="mhdr">
+      <span class="mtitle">🔐 Iniciar Sesión</span>
+      <button class="mclose" onclick="closeM('lm')">✕</button>
+    </div>
+    <div class="status-msg" id="lmsg"></div>
+    <form onsubmit="doLogin(event)">
+      <div class="field"><label>Email</label>
+        <input type="email" id="le" placeholder="tu@email.com" required autocomplete="email"></div>
+      <div class="field"><label>Contraseña</label>
+        <input type="password" id="lp" placeholder="••••••••" required autocomplete="current-password"></div>
+      <div class="fbtns">
+        <button class="btn bp" type="submit" style="flex:1;padding:11px">Entrar</button>
+      </div>
+    </form>
+    <div class="aswitch">¿Sin cuenta? <span onclick="swM('lm','rm')">Regístrate gratis</span></div>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div class="modal" id="rm">
+  <div class="mbox">
+    <div class="mhdr">
+      <span class="mtitle">✨ Crear Cuenta</span>
+      <button class="mclose" onclick="closeM('rm')">✕</button>
+    </div>
+    <div class="status-msg" id="rmsg"></div>
+    <form onsubmit="doReg(event)">
+      <div class="field"><label>Email</label>
+        <input type="email" id="re" placeholder="tu@email.com" required autocomplete="email"></div>
+      <div class="field"><label>Contraseña</label>
+        <input type="password" id="rp" placeholder="Mínimo 6 caracteres" required minlength="6" autocomplete="new-password"></div>
+      <div class="field"><label>Confirmar</label>
+        <input type="password" id="rp2" placeholder="Repite la contraseña" required minlength="6" autocomplete="new-password"></div>
+      <div class="fbtns">
+        <button class="btn bp" type="submit" style="flex:1;padding:11px">Crear Cuenta</button>
+      </div>
+    </form>
+    <div class="aswitch">¿Ya tienes cuenta? <span onclick="swM('rm','lm')">Inicia sesión</span></div>
+  </div>
+</div>
+
+<!-- ADD -->
+<div class="modal" id="am">
+  <div class="mbox">
+    <div class="mhdr">
+      <span class="mtitle">📡 Agregar Canal</span>
+      <button class="mclose" onclick="closeM('am')">✕</button>
+    </div>
+    <div class="status-msg" id="amsg"></div>
+    <form onsubmit="doAdd(event)" id="aform">
+      <div class="field"><label>Nombre del Canal *</label>
+        <input type="text" id="an" placeholder="Ej: CNN Internacional" required></div>
+      <div class="field"><label>URL Stream M3U8 *</label>
+        <input type="url" id="au" placeholder="https://ejemplo.com/stream.m3u8" required></div>
+      <div class="field"><label>URL Póster (16:9) *</label>
+        <input type="url" id="ap" placeholder="https://ejemplo.com/poster.jpg" required></div>
+      <div class="frow">
+        <div class="field"><label>Categoría *</label>
+          <select id="ac" required>
+            <option value="">Elegir...</option>
+            <option>Noticias</option><option>Deportes</option>
+            <option>Música</option><option>Entretenimiento</option>
+            <option>Películas</option><option>Infantil</option>
+          </select>
+        </div>
+        <div class="field"><label>Creador del Canal *</label>
+          <input type="text" id="acr" placeholder="Nombre del canal" required></div>
+      </div>
+      <div class="field"><label>Web del Creador (opcional)</label>
+        <input type="url" id="aw" placeholder="https://sitio.com"></div>
+      <div class="fbtns">
+        <button class="btn bg" type="button" onclick="closeM('am')" style="flex:1;padding:11px">Cancelar</button>
+        <button class="btn bp" type="submit" id="abtn" style="flex:2;padding:11px">Publicar Canal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- EDIT -->
+<div class="modal" id="em">
+  <div class="mbox">
+    <div class="mhdr">
+      <span class="mtitle">✏️ Editar Canal</span>
+      <button class="mclose" onclick="closeM('em')">✕</button>
+    </div>
+    <div class="status-msg" id="emsg"></div>
+    <form onsubmit="doEdit(event)">
+      <input type="hidden" id="eid">
+      <div class="field"><label>Nombre del Canal *</label>
+        <input type="text" id="en" required></div>
+      <div class="field"><label>URL Stream M3U8 *</label>
+        <input type="url" id="eu" required></div>
+      <div class="field"><label>URL Póster *</label>
+        <input type="url" id="epo" required></div>
+      <div class="frow">
+        <div class="field"><label>Categoría *</label>
+          <select id="ec" required>
+            <option>Noticias</option><option>Deportes</option>
+            <option>Música</option><option>Entretenimiento</option>
+            <option>Películas</option><option>Infantil</option>
+          </select>
+        </div>
+        <div class="field"><label>Creador *</label>
+          <input type="text" id="ecr" required></div>
+      </div>
+      <div class="field"><label>Web Creador</label>
+        <input type="url" id="ew" placeholder="https://sitio.com"></div>
+      <div class="fbtns">
+        <button class="btn bg" type="button" onclick="closeM('em')" style="flex:1;padding:11px">Cancelar</button>
+        <button class="btn bp" type="submit" style="flex:2;padding:11px">Guardar Cambios</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- PLAYER -->
+<div class="player" id="pl">
+  <div class="ptop">
+    <div class="pinfo">
+      <div class="ptitle" id="pn"></div>
+      <div class="psub" id="ps"></div>
+    </div>
+    <button class="btn bd" onclick="closePl()">✕ Cerrar</button>
+  </div>
+  <div class="pbody">
+    <div class="pmain">
+      <div class="vwrap">
+        <video id="vid" controls autoplay playsinline></video>
+      </div>
+      <div class="pmeta">
+        <h3 id="pcr"></h3>
+        <p id="pwb"></p>
+        <p id="ppb"></p>
+      </div>
+    </div>
+    <div class="psidebar">
+      <div class="shead">📺 Más de esta categoría</div>
+      <div class="rlist" id="rl"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tosts" id="tosts"></div>
+
+<script>
+const fbc = {
+  apiKey:"AIzaSyAQCTqOUNRMH5eEAujjCfUfoQ1qdct8YfI",
+  authDomain:"worldstream2026.firebaseapp.com",
+  projectId:"worldstream2026",
+  storageBucket:"worldstream2026.firebasestorage.app",
+  messagingSenderId:"63129457047",
+  appId:"1:63129457047:web:8808d1f427dc5b7eb7b4d2",
+  databaseURL:"https://worldstream2026-default-rtdb.firebaseio.com"
+};
+firebase.initializeApp(fbc);
+const db = firebase.database();
+const auth = firebase.auth();
+
+const ADMIN='personadeg321@gmail.com';
+let usr=null, isAdm=false, chs=[], cat='all', hlsi=null;
+
+// AUTH
+auth.onAuthStateChanged(u=>{
+  usr=u; isAdm=u?.email===ADMIN;
+  const ab=document.getElementById('authBtns');
+  const up=document.getElementById('upill');
+  if(u){
+    ab.style.display='none'; up.style.display='flex';
+    document.getElementById('umail').textContent=u.email;
+    document.getElementById('atag').style.display=isAdm?'inline-flex':'none';
+  } else {
+    ab.style.display='flex'; up.style.display='none';
+  }
+  renderGrid();
+});
+
+// LOAD CHANNELS
+db.ref('channels').on('value', snap=>{
+  chs=[];
+  snap.forEach(c=>chs.push({id:c.key,...c.val()}));
+  document.getElementById('tc').textContent=chs.length;
+  renderGrid();
+  bgStatus();
+});
+
+// RENDER
+function renderGrid(){
+  const g=document.getElementById('grid');
+  const list=cat==='all'?chs:chs.filter(c=>c.category===cat);
+  if(!list.length){
+    g.innerHTML=`<div class="empty"><div class="ei">📡</div><p>Sin canales en esta categoría</p></div>`;
+    return;
+  }
+  g.innerHTML=list.map(c=>mkCard(c)).join('');
+}
+
+function mkCard(c){
+  const fb=`https://placehold.co/400x225/0c1018/00d4ff?text=${encodeURIComponent(c.name)}`;
+  const st=c._st||'chk';
+  const bdgCls=st==='live'?'live':st==='off'?'offline':'chk';
+  const bdgTx=st==='live'?'<div class="ldot"></div> LIVE':st==='off'?'● OFFLINE':'⏳';
+  const adm=isAdm?`<div class="cacts" onclick="event.stopPropagation()">
+    <button class="btn be" onclick="openEd('${c.id}')">✏️ Editar</button>
+    <button class="btn bd" onclick="delCh('${c.id}')">🗑️ Borrar</button>
+  </div>`:'';
+  return `<div class="card" id="cd_${c.id}" onclick="playCh('${c.id}')">
+    <div class="thumb">
+      <img src="${c.poster||fb}" alt="${esc(c.name)}" loading="lazy"
+        onerror="this.src='${fb}'">
+      <div class="ov"><div class="plic">▶</div></div>
+      <div class="bdg ${bdgCls}" id="bdg_${c.id}">${bdgTx}</div>
+    </div>
+    <div class="cbody">
+      <div class="cname">${esc(c.name)}</div>
+      <div class="ccat">📂 ${esc(c.category)}</div>
+      <div class="cmeta">
+        <span>🎬 <b>${esc(c.creatorName||'')}</b></span>
+        ${c.creatorWeb?`<span>🌐 <b>${esc(c.creatorWeb)}</b></span>`:''}
+        <span>📤 <b>${esc(c.publisherEmail||'Anónimo')}</b></span>
+      </div>
+      ${adm}
+    </div>
+  </div>`;
+}
+
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// STATUS en background
+const stCache={};
+function bgStatus(){
+  const list=cat==='all'?chs:chs.filter(c=>c.category===cat);
+  let ln=0;
+  list.forEach(c=>{
+    if(stCache[c.id]!==undefined){
+      c._st=stCache[c.id]?'live':'off';
+      updBdg(c.id,stCache[c.id]);
+      if(stCache[c.id])ln++;
+      document.getElementById('lc').textContent=ln;
+      return;
+    }
+    ping(c.url).then(ok=>{
+      stCache[c.id]=ok; c._st=ok?'live':'off';
+      updBdg(c.id,ok);
+      ln=Object.values(stCache).filter(Boolean).length;
+      document.getElementById('lc').textContent=ln;
+    });
+  });
+}
+
+function updBdg(id,ok){
+  const b=document.getElementById('bdg_'+id);
+  if(!b)return;
+  if(ok){b.className='bdg live';b.innerHTML='<div class="ldot"></div> LIVE'}
+  else{b.className='bdg offline';b.innerHTML='● OFFLINE'}
+}
+
+async function ping(url){
+  try{
+    const c=new AbortController();
+    const t=setTimeout(()=>c.abort(),5000);
+    await fetch(url,{method:'HEAD',mode:'no-cors',signal:c.signal});
+    clearTimeout(t);return true;
+  }catch{
+    try{
+      const c2=new AbortController();
+      const t2=setTimeout(()=>c2.abort(),5000);
+      await fetch(url,{mode:'no-cors',signal:c2.signal});
+      clearTimeout(t2);return true;
+    }catch{return false}
+  }
+}
+
+// CATS
+function setC(c,el){
+  cat=c;
+  document.querySelectorAll('.cb').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  renderGrid();
+  setTimeout(bgStatus,100);
+}
+
+// MODALS
+function openM(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden'}
+function closeM(id){document.getElementById(id).classList.remove('open');document.body.style.overflow='';clearMsg(id)}
+function swM(a,b){closeM(a);openM(b)}
+
+function showMsg(id,txt,type){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=txt;el.className='status-msg '+type;el.style.display='block';
+}
+function clearMsg(mid){
+  const ids={lm:'lmsg',rm:'rmsg',am:'amsg',em:'emsg'};
+  const el=document.getElementById(ids[mid]);
+  if(el){el.style.display='none';el.textContent=''}
+}
+
+// LOGIN
+async function doLogin(e){
+  e.preventDefault();
+  const email=document.getElementById('le').value;
+  const pass=document.getElementById('lp').value;
+  try{
+    await auth.signInWithEmailAndPassword(email,pass);
+    toast('✅ Sesión iniciada','ok');
+    closeM('lm');
+    e.target.reset();
+  }catch(err){
+    showMsg('lmsg',err.message==='Firebase: Error (auth/invalid-credential).'
+      ?'Email o contraseña incorrectos':'Error: '+err.message,'err');
+  }
+}
+
+// REGISTER
+async function doReg(e){
+  e.preventDefault();
+  const pass=document.getElementById('rp').value;
+  const pass2=document.getElementById('rp2').value;
+  if(pass!==pass2){showMsg('rmsg','Las contraseñas no coinciden','err');return}
+  try{
+    await auth.createUserWithEmailAndPassword(document.getElementById('re').value,pass);
+    toast('✅ Cuenta creada','ok');
+    closeM('rm');
+    e.target.reset();
+  }catch(err){showMsg('rmsg',err.message,'err')}
+}
+
+// LOGOUT
+async function doOut(){
+  await auth.signOut();
+  toast('👋 Sesión cerrada');
+}
+
+// ADD — publica directo sin verificar stream
+async function doAdd(e){
+  e.preventDefault();
+  const name=document.getElementById('an').value.trim();
+  const url=document.getElementById('au').value.trim();
+  const poster=document.getElementById('ap').value.trim();
+  const category=document.getElementById('ac').value;
+  const creatorName=document.getElementById('acr').value.trim();
+  const creatorWeb=document.getElementById('aw').value.trim();
+
+  if(chs.find(c=>c.url===url)){
+    showMsg('amsg','Este canal ya existe en la plataforma','err');
+    return;
+  }
+
+  const btn=document.getElementById('abtn');
+  btn.textContent='Publicando...';btn.disabled=true;
+
+  try{
+    await db.ref('channels').push({
+      name,url,poster,category,creatorName,
+      creatorWeb:creatorWeb||null,
+      publisherEmail:usr?usr.email:'Anónimo',
+      createdAt:Date.now()
+    });
+    toast('✅ Canal publicado exitosamente','ok');
+    closeM('am');
+    document.getElementById('aform').reset();
+  }catch(err){
+    showMsg('amsg','Error al publicar: '+err.message,'err');
+  }
+  btn.textContent='Publicar Canal';btn.disabled=false;
+}
+
+// EDIT
+function openEd(id){
+  if(!isAdm){toast('❌ Solo el admin puede editar','err');return}
+  const c=chs.find(x=>x.id===id);if(!c)return;
+  document.getElementById('eid').value=id;
+  document.getElementById('en').value=c.name;
+  document.getElementById('eu').value=c.url;
+  document.getElementById('epo').value=c.poster||'';
+  document.getElementById('ec').value=c.category;
+  document.getElementById('ecr').value=c.creatorName||'';
+  document.getElementById('ew').value=c.creatorWeb||'';
+  openM('em');
+}
+
+async function doEdit(e){
+  e.preventDefault();
+  if(!isAdm){toast('❌ Solo el admin puede editar','err');return}
+  const id=document.getElementById('eid').value;
+  const old=chs.find(x=>x.id===id);
+  try{
+    await db.ref('channels/'+id).set({
+      ...old,
+      name:document.getElementById('en').value.trim(),
+      url:document.getElementById('eu').value.trim(),
+      poster:document.getElementById('epo').value.trim(),
+      category:document.getElementById('ec').value,
+      creatorName:document.getElementById('ecr').value.trim(),
+      creatorWeb:document.getElementById('ew').value.trim()||null,
+      updatedAt:Date.now()
+    });
+    toast('✅ Canal actualizado','ok');
+    closeM('em');
+  }catch(err){showMsg('emsg','Error: '+err.message,'err')}
+}
+
+// DELETE
+async function delCh(id){
+  if(!isAdm){toast('❌ Solo el admin puede borrar','err');return}
+  if(!confirm('¿Eliminar este canal?'))return;
+  try{
+    await db.ref('channels/'+id).remove();
+    toast('✅ Canal eliminado','ok');
+  }catch(err){toast('❌ '+err.message,'err')}
+}
+
+// PLAYER
+function playCh(id){
+  const c=chs.find(x=>x.id===id);if(!c)return;
+  document.getElementById('pn').textContent=c.name;
+  document.getElementById('ps').textContent='📂 '+c.category;
+  document.getElementById('pcr').textContent='🎬 '+c.creatorName;
+  document.getElementById('pwb').textContent=c.creatorWeb?'🌐 '+c.creatorWeb:'';
+  document.getElementById('ppb').textContent='📤 Publicado por: '+(c.publisherEmail||'Anónimo');
+
+  const vid=document.getElementById('vid');
+  if(hlsi){hlsi.destroy();hlsi=null}
+  vid.src='';
+
+  if(Hls.isSupported()){
+    hlsi=new Hls({enableWorker:false,lowLatencyMode:true});
+    hlsi.loadSource(c.url);
+    hlsi.attachMedia(vid);
+    hlsi.on(Hls.Events.MANIFEST_PARSED,()=>vid.play().catch(()=>{}));
+    hlsi.on(Hls.Events.ERROR,(_,d)=>{if(d.fatal)toast('❌ Error al reproducir','err')});
+  } else if(vid.canPlayType('application/vnd.apple.mpegurl')){
+    vid.src=c.url;vid.play().catch(()=>{});
+  }
+
+  showRel(c.category,id);
+  document.getElementById('pl').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function showRel(cat,cur){
+  const list=chs.filter(c=>c.category===cat&&c.id!==cur).slice(0,15);
+  const el=document.getElementById('rl');
+  if(!list.length){el.innerHTML='<div class="norel">📭 Sin más canales<br>en esta categoría</div>';return}
+  el.innerHTML=list.map(c=>{
+    const fb=`https://placehold.co/88x55/0c1018/00d4ff?text=${encodeURIComponent(c.name)}`;
+    return `<div class="rcrd" onclick="playCh('${c.id}')">
+      <div class="rth"><img src="${c.poster||fb}" loading="lazy" onerror="this.src='${fb}'"></div>
+      <div class="rinf">
+        <div class="rname">${esc(c.name)}</div>
+        <div class="rcat">${esc(c.category)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function closePl(){
+  document.getElementById('pl').classList.remove('open');
+  document.body.style.overflow='';
+  const vid=document.getElementById('vid');
+  if(hlsi){hlsi.destroy();hlsi=null}
+  vid.pause();vid.src='';
+}
+
+// TOAST
+function toast(msg,type=''){
+  const d=document.createElement('div');
+  d.className='tst'+(type?' '+type:'');
+  d.textContent=msg;
+  document.getElementById('tosts').appendChild(d);
+  setTimeout(()=>d.remove(),3200);
+}
+
+// ESC
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    closePl();
+    document.querySelectorAll('.modal.open').forEach(m=>m.classList.remove('open'));
+    document.body.style.overflow='';
+  }
+});
+
+// BACKDROP CLOSE
+document.querySelectorAll('.modal').forEach(m=>{
+  m.addEventListener('click',e=>{
+    if(e.target===m){m.classList.remove('open');document.body.style.overflow=''}
+  });
+});
+
+// REFRESH STATUS cada 3 min
+setInterval(()=>{
+  Object.keys(stCache).forEach(k=>delete stCache[k]);
+  bgStatus();
+},180000);
+</script>
+</body>
+</html>
