@@ -271,6 +271,46 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 /* No mostrar el pogress bar y el -00:00 xdd */
 .prog-wrap, .v-time { display: none !important; }
 
+/* Para ver bien el directo... */
+#vwrap:-webkit-full-screen { width:100%; height:100%; padding-bottom:0; background:#000; }
+#vwrap:-moz-full-screen    { width:100%; height:100%; padding-bottom:0; background:#000; }
+#vwrap:-ms-fullscreen      { width:100%; height:100%; padding-bottom:0; background:#000; }
+#vwrap:fullscreen          { width:100%; height:100%; padding-bottom:0; background:#000; }
+
+#vwrap:fullscreen video,
+#vwrap:-webkit-full-screen video,
+#vwrap:-moz-full-screen video,
+#vwrap:-ms-fullscreen video {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+}
+
+#vwrap:fullscreen .vctrl,
+#vwrap:-webkit-full-screen .vctrl,
+#vwrap:-moz-full-screen .vctrl,
+#vwrap:-ms-fullscreen .vctrl {
+  position:absolute;
+  bottom:0;
+  left:0;
+  right:0;
+  z-index:9999;
+  opacity:0;
+  transition:opacity .25s;
+}
+
+#vwrap:fullscreen:hover .vctrl,
+#vwrap:-webkit-full-screen:hover .vctrl {
+  opacity:1;
+}
+
+/* Hacer desaparecer las pndj del player solo */
+#vwrap:fullscreen:not(.show-ctrl),
+#vwrap:-webkit-full-screen:not(.show-ctrl){
+  cursor:none;
+}
 </style>
 </head>
 <body>
@@ -836,17 +876,35 @@ function initPlayerEvents(){
   const wrap=document.getElementById('vwrap');
   vid.volume=1;
 
-  // Show controls on move
-  wrap.addEventListener('mousemove',()=>{
-    wrap.classList.add('show-ctrl');
+// Auto-hide controls
+function showCtrl(){
+  wrap.classList.add('show-ctrl');
+  clearTimeout(ctrlTimeout);
+  ctrlTimeout=setTimeout(()=>{
+    wrap.classList.remove('show-ctrl');
+  },5000);
+}
+
+// PC — mouse
+wrap.addEventListener('mousemove', showCtrl);
+wrap.addEventListener('mouseenter', showCtrl);
+wrap.addEventListener('mouseleave',()=>{
+  clearTimeout(ctrlTimeout);
+  wrap.classList.remove('show-ctrl');
+});
+
+// Mobile — tap toggle
+wrap.addEventListener('touchstart', e=>{
+  // Si tocó un botón no hacer toggle
+  if(e.target.closest('.ic-btn,.qbtn,.v-error,.spinner')) return;
+  e.preventDefault();
+  if(wrap.classList.contains('show-ctrl')){
     clearTimeout(ctrlTimeout);
-    ctrlTimeout=setTimeout(()=>wrap.classList.remove('show-ctrl'),2500);
-  });
-  wrap.addEventListener('touchstart',()=>{
-    wrap.classList.toggle('show-ctrl');
-    clearTimeout(ctrlTimeout);
-    ctrlTimeout=setTimeout(()=>wrap.classList.remove('show-ctrl'),3000);
-  });
+    wrap.classList.remove('show-ctrl');
+  } else {
+    showCtrl();
+  }
+},{passive:false});
 
   // Video events
   vid.addEventListener('play',()=>document.getElementById('playBtn').textContent='| |');
@@ -887,9 +945,18 @@ window.seekLive=()=>{
 };
 
 window.toggleFs=()=>{
-  const el=document.getElementById('pl');
-  if(!document.fullscreenElement)el.requestFullscreen?.().catch(()=>{});
-  else document.exitFullscreen?.();
+  const el=document.getElementById('vwrap');
+  if(!document.fullscreenElement){
+    if(el.requestFullscreen) el.requestFullscreen();
+    else if(el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if(el.mozRequestFullScreen) el.mozRequestFullScreen();
+    else if(el.msRequestFullscreen) el.msRequestFullscreen();
+  } else {
+    if(document.exitFullscreen) document.exitFullscreen();
+    else if(document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if(document.mozCancelFullScreen) document.mozCancelFullScreen();
+    else if(document.msExitFullscreen) document.msExitFullscreen();
+  }
 };
 
 window.togglePip=async()=>{
